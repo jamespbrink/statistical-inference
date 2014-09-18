@@ -1,0 +1,87 @@
+---
+title: "Statisical Inference Project"
+author: "James Brink"
+date: "September 18, 2014"
+output: pdf_document
+---
+
+##Part 1: Simulation Exercises
+
+In this part we will create a simulation of an exponential distribution with the rexp() function in R.  To do this we will do 1000 simulations of the mean of 40 exponentials using a constant lambda of 0.2 for all of our simulations.
+
+First we will simulate our data and populate a data frame called "meanData" with the means from our simulations.
+```{r}
+##set variables
+set.seed(7)
+lambda <- 0.2
+n <- 40
+sims <- 1000
+
+##simulate means and insert into data frame
+meanData <- sapply(1:sims, function(x) {mean(rexp(n, lambda))})
+meanData <- as.data.frame(meanData)
+names(meanData)[1] <- "x"
+head(meanData)
+```
+
+Now we can look at some of the calculated attributes of our simulated distribution and compare them to their theorhetical values.
+```{r}
+##the center of our simulated distribution
+simDistMean <- mean(meanData$x)
+simDistMean
+```
+
+```{r}
+##the theorhetical center of our distribution
+theoDistMean <- 1/lambda
+theoDistMean
+```
+
+We see that the distribution that we simulated is centered around `r simDistMean`, very close to the theorhetical center of the distribution which is `r theoDistMean`. 
+
+Next we examine the variability of our simulation distribution and compare it to the theorhetical variablity.
+```{r}
+##the standard deviation of our simulated distribution
+simDistSd <- sd(meanData$x)
+simDistSd
+```
+
+```{r}
+##the theorhetical center of our distribution
+theoDistSd <- (1/lambda)/sqrt(40)
+theoDistSd
+```
+
+```{r}
+##the standard deviation of our simulated distribution
+simDistVar <- var(meanData$x)
+simDistVar
+```
+
+```{r}
+##the theorhetical center of our distribution
+theoDistVar <- theoDistSd^2
+theoDistVar
+```
+Our variability measures are close to our the theoreticals as well.  We see that the distribution that we simulated is has a standard deviation of `r simDistSd` and a variance of `r simDistVar`, while the theorhetical standard deviation of the distribution is `r theoDistSd` and the theorhetical variance is `r theoDistVar`.
+
+Below we examine the simulated data using a histogram and then plot a density line over top of it in red and a density line for a normal distribution over top as well in black. We can see that the simulated exponential distribution is approximately normal.  We also show the simulated distribution mean as a black vertical line.
+```{r}
+library(ggplot2)
+g <- ggplot(meanData, aes(x=x))
+g <- g + geom_histogram(aes(y=..density..), fill="#CCFFCC", color="black", binwidth=0.15)
+g <- g + stat_density(color="red", geom="line", position="identity")
+g <- g + stat_function(fun = dnorm, arg = list(sd = simDistSd, mean = simDistMean))
+g <- g + geom_vline(aes(xintercept=theoDistMean))
+g <- g + ggtitle("Simulated Distribution")
+g
+```
+
+Lastly we can evaluate the coverage of +/- 1.96 standard deviations on the simulated distribution and see if it is similar to that of a normal distribution.  We know that +/- 1.96 standard deviations away from the mean provides us with a 95% confidence interval on a normal distribution, lets evaluate the coverage +/-1.96 standard deviations away from our simulated mean.
+
+```{r}
+cuts <- theoDistMean + c(-1,1)*1.96*((1/lambda)/sqrt(40))
+coverage <- length(meanData[meanData$x > cuts[1] & meanData$x < cuts[2],]) / nrow(meanData)
+coverage
+```
+We see that `r coverage*100`% of our simulated sample means fall within 1.96 standard deviations of the population mean.  This is very close to the 95% we know to be true in a normal distribution.
