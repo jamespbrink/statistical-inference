@@ -7,3 +7,101 @@ output: pdf_document
 
 ##Part 2: Basic Inferential Data Analysis
 
+###Loading the Data, Summary, and Exploratory Analyses
+
+First we load the ToothGrowth data into R and perform some exploratory data analysis.
+```{r}
+library(datasets)
+head(ToothGrowth, 3)
+```
+
+This data shows the length of teeth in each of 10 guinea pigs at each of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery methods (orange juice or ascorbic acid).
+```{r}
+names(ToothGrowth)
+```
+There are 3 columns in our data, "len" is the tooth length, "supp" is the supplement type (VC or OJ), and "dose" is the dose in milligrams.  
+
+Next we do some exploratory data analysis, starting with the summary of the data.
+```{r}
+summary(ToothGrowth)
+```
+
+Below we use a box plot to show explore the effects of the different delivery methods on the length of teeth.
+```{r fig.width = 6, fig.height= 3.5}
+library(ggplot2)
+g <- ggplot(aes(x=supp, y=len), data=ToothGrowth)
+g <- g + geom_boxplot(aes(fill=supp)) + ylab("Tooth Length") + xlab("Delivery Method")
+g
+```
+
+From looking at the above plot it appears that the orange juice had a greater positive effect on tooth length than the ascorbic acid.  By grouping our data by delivery method and dose we can get a better idea what effect the size of the dose has on tooth length.  We show that data in another plot below.
+```{r warning=FALSE, message=FALSE, fig.width = 6, fig.height= 3.5}
+g <- ggplot(aes(x=dose, y=len), data=ToothGrowth)
+g <- g + geom_point(aes(color=supp)) + geom_smooth(aes(color=supp)) + ylab("Tooth Length") + xlab("Dose (mg)")
+g
+```
+Looking at our data it appears that the effectiveness of the orange juice as a method to stimulate tooth growth is greater than the ascorbic acid, but the advantage over ascorbic acid seems to decrease in larger doses.  
+
+###Hypothesis Testing
+We have a fairly small sample size in this dataset so we should do some hypothesis testing to see if orange juice really stimulates more tooth growth than ascorbic acid.  We will let the null hypothesis, Ho, be that the means are equal between the two delivery methods, and let the alternative hypothesis, Ha, be that the two means are different.  This will be a two sided test so we can use the t-test to get our confidence interval.
+
+In order to properly perform this test we need to know if the if the two groups of data have similar variances.
+```{r message=FALSE}
+library(dplyr)
+tg <- group_by(ToothGrowth, supp)
+summarize(tg, var=var(len))
+```
+
+The variances do not appear to be similar so we must set the var.equal argument to FASLE when using the t.test() function.  We also set the paired argument to FALSE because these are not paired observations.
+```{r}
+t.test(len ~ supp, data = ToothGrowth, paired=FALSE, var.equal=FALSE)
+```
+The resulting test shows a 95% confidence interval that includes 0 so we fail to reject the null hypothesis that the means between the orange juice and ascorbic acid are equal.
+
+Next we will move on to do hypothesis testing on the different dosages.  To do this, first we need to see if the variances are similar just like we did for the delivery method hypothesis testing.
+```{r message=FALSE}
+tg <- group_by(ToothGrowth, dose)
+summarize(tg, var=var(len))
+```
+We see that there are similar variances between 0.5mg and 1.0mg, but 2.0mg differs, to be safe we will assume unequal variances.
+
+To perform our hypothesis testing for all three dosages we must break this into three different tests as we can only compare two things at a time.  First we will compare a 0.5mg dose to the 1.0mg dose, followed by a 0.5mg dose to a 2.0mg dose, and finally a 1.0mg dose to a 2.0mg dose.  For each test the null hypothesis, Ho, will be that the means are equal, and the alternative hypothesis, Ha, will be that the means are not equal.
+```{r}
+t.test(len ~ dose, data=ToothGrowth[ToothGrowth$dose==0.5 | ToothGrowth$dose==1.0,],
+       paired=FALSE, var.equal=FALSE)
+```
+```{r}
+t.test(len ~ dose, data=ToothGrowth[ToothGrowth$dose==0.5 | ToothGrowth$dose==2.0,],
+       paired=FALSE, var.equal=FALSE)
+```
+```{r}
+t.test(len ~ dose, data=ToothGrowth[ToothGrowth$dose==1.0 | ToothGrowth$dose==2.0,],
+       paired=FALSE, var.equal=FALSE)
+```
+
+For all three of our tests we can reject the null hypothesis that the means are equal for different dosages since the 95% confidence interval for each test never includes zero.  All of the intervals are below zero so we can infer that there is a positive relationship between dosage size and tooth length.
+
+Finally we can compare each the two delivery methods for each of the three dosages using the same methodology.
+```{r}
+t.test(len ~ supp, data=ToothGrowth[ToothGrowth$dose==0.5,],
+       paired=FALSE, var.equal=FALSE)
+```
+```{r}
+t.test(len ~ supp, data=ToothGrowth[ToothGrowth$dose==1.0,],
+       paired=FALSE, var.equal=FALSE)
+```
+```{r}
+t.test(len ~ supp, data=ToothGrowth[ToothGrowth$dose==2.0,],
+       paired=FALSE, var.equal=FALSE)
+```
+We can see from these tests that we can reject the null hypothesis that the mean effect of the two delivery methods is equal for the 0.5mg and 1.0mg dosages, but we fail to reject for the 2.0mg dosage.  With both the 0.5mg and 1.0mg dosages the orange juice appears to have a greater effect on tooth length.
+
+###Assumptions
+* We found our sample variances to differ in many instances so we assumed the variances to be unequal, playing it safe.
+* We assume that the guinea pigs were assigned randomly to each delivery type and dosage and that the data is that of 60 different guinea pigs such that none of our data is paired.
+* We assume that our sample is representative of the population of all guinea pigs.
+
+###Conclusions
+* The length of teeth increases as dosage levels are increased.
+* Delivery method does not have any effect on length of teeth.
+* At the 0.5mg and 1.0mg dosages, the orange juice has a greater effect.  At the 2.0mg dosages we cannot draw any conclusions that either delivery type is more effective.
